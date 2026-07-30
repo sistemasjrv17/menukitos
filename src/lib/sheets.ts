@@ -7,7 +7,7 @@ export interface OrderLineItem {
   name: string
   sizeId?: string
   sizeLabel?: string
-  options?: Record<string, string>
+  options?: Record<string, string[]>
   extrasLabel?: string
   qty: number
   unitPrice: number

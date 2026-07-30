@@ -21,7 +21,7 @@ export interface CartLine {
   key: string
   item: MenuItem
   sizeId?: string
-  options?: Record<string, string>
+  options?: Record<string, string[]>
   extrasLabel?: string
   unitPrice: number
   qty: number
@@ -37,12 +37,12 @@ interface CartState {
   lines: CartLine[]
 }
 
-const STORAGE_KEY = 'kitos-cart-v2'
+const STORAGE_KEY = 'kitos-cart-v3'
 
 interface StoredCartLine {
   itemId: string
   sizeId?: string
-  options?: Record<string, string>
+  options?: Record<string, string[]>
   qty: number
 }
 

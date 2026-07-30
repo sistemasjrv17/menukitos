@@ -21,6 +21,8 @@ export interface MenuOptionGroup {
   id: string
   label: string
   required?: boolean
+  /** Permite elegir varias opciones (ej. aderezos). */
+  multiple?: boolean
   choices?: OptionChoice[]
   subgroups?: OptionSubgroup[]
 }
@@ -49,10 +51,10 @@ export interface Category {
   short: string
 }
 
-/** Selecciones al agregar al carrito */
+/** Selecciones al agregar al carrito (siempre arrays; single = 1 id). */
 export interface CartExtras {
   sizeId?: string
-  options?: Record<string, string>
+  options?: Record<string, string[]>
 }
 
 export const categories: Category[] = [
@@ -131,7 +133,7 @@ export const menuItems: MenuItem[] = [
     id: 'sushi-combo3',
     name: 'Combo 3',
     description:
-      '1 Rollo, papas fritas o gyozas y aderezo a elegir.',
+      '1 Rollo, papas fritas o gyozas y aderezos a elegir.',
     price: 150,
     category: 'sushi',
     image: asset('images/sushi_combo3.jpg'),
@@ -147,8 +149,9 @@ export const menuItems: MenuItem[] = [
       },
       {
         id: 'aderezo',
-        label: 'Aderezo',
+        label: 'Aderezos',
         required: true,
+        multiple: true,
         choices: [
           { id: 'chipotle', label: 'Chipotle' },
           { id: 'anguila', label: 'Salsa anguila' },
@@ -234,22 +237,30 @@ function findChoiceInGroup(
   return undefined
 }
 
+function asChoiceIds(value: string | string[] | undefined): string[] {
+  if (!value) return []
+  return Array.isArray(value) ? value.filter(Boolean) : value ? [value] : []
+}
+
 export function formatOptionSelections(
   item: MenuItem,
-  options?: Record<string, string>,
+  options?: Record<string, string[]>,
 ): string | undefined {
   if (!item.options?.length || !options) return undefined
   const parts: string[] = []
   for (const group of item.options) {
-    const choiceId = options[group.id]
-    if (!choiceId) continue
-    const found = findChoiceInGroup(group, choiceId)
-    if (!found) continue
-    parts.push(
-      found.subgroupLabel
-        ? `${found.choice.label} (${found.subgroupLabel})`
-        : found.choice.label,
-    )
+    const ids = asChoiceIds(options[group.id])
+    if (!ids.length) continue
+    const labels = ids
+      .map((choiceId) => {
+        const found = findChoiceInGroup(group, choiceId)
+        if (!found) return null
+        return found.subgroupLabel
+          ? `${found.choice.label} (${found.subgroupLabel})`
+          : found.choice.label
+      })
+      .filter(Boolean)
+    if (labels.length) parts.push(labels.join(', '))
   }
   return parts.length ? parts.join(' · ') : undefined
 }
@@ -268,14 +279,14 @@ export function buildLineExtrasLabel(
 
 export function areRequiredOptionsSelected(
   item: MenuItem,
-  options?: Record<string, string>,
+  options?: Record<string, string[]>,
 ): boolean {
   if (!item.options?.length) return true
   return item.options.every((group) => {
     if (group.required === false) return true
-    const choiceId = options?.[group.id]
-    if (!choiceId) return false
-    return Boolean(findChoiceInGroup(group, choiceId))
+    const ids = asChoiceIds(options?.[group.id])
+    if (!ids.length) return false
+    return ids.every((id) => Boolean(findChoiceInGroup(group, id)))
   })
 }
 
@@ -300,7 +311,10 @@ export function makeCartKey(itemId: string, extras?: CartExtras): string {
   if (extras?.options) {
     const sorted = Object.keys(extras.options)
       .sort()
-      .map((k) => `${k}:${extras.options![k]}`)
+      .map((k) => {
+        const ids = [...asChoiceIds(extras.options![k])].sort().join(',')
+        return `${k}:${ids}`
+      })
       .join('|')
     if (sorted) parts.push(sorted)
   }
@@ -320,13 +334,16 @@ export function normalizeCartExtras(
         ? item.sizes[0].id
         : undefined
 
-  const options: Record<string, string> = {}
+  const options: Record<string, string[]> = {}
   if (item.options?.length && extras?.options) {
     for (const group of item.options) {
-      const choiceId = extras.options[group.id]
-      if (choiceId && findChoiceInGroup(group, choiceId)) {
-        options[group.id] = choiceId
-      }
+      const raw = extras.options[group.id] as string | string[] | undefined
+      const ids = asChoiceIds(raw).filter((id) =>
+        Boolean(findChoiceInGroup(group, id)),
+      )
+      const unique = [...new Set(ids)]
+      if (!unique.length) continue
+      options[group.id] = group.multiple ? unique.sort() : [unique[0]]
     }
   }
 
