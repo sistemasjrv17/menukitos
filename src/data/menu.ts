@@ -133,7 +133,7 @@ export const menuItems: MenuItem[] = [
     id: 'sushi-combo3',
     name: 'Combo 3',
     description:
-      '1 Rollo, papas fritas o gyozas y aderezos a elegir.',
+      '1 Rollo, papas fritas y aderezos a elegir.',
     price: 150,
     category: 'sushi',
     image: asset('images/sushi_combo3.jpg'),
@@ -144,7 +144,6 @@ export const menuItems: MenuItem[] = [
         required: true,
         choices: [
           { id: 'papas', label: 'Papas fritas' },
-          { id: 'gyozas', label: 'Gyozas' },
         ],
       },
       {
